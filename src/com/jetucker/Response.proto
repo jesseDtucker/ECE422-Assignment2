@@ -1,0 +1,20 @@
+package com.jetucker;
+
+option java_outer_classname = "Response";
+
+enum ResponseControlCode
+{
+	RESPONSE_AUTH = 1;
+	RESPONSE_FILE = 2;
+	RESPONSE_ERROR = 3;
+}
+
+message ControlResponse
+{
+	required int32 userId = 1;
+	required ResponseControlCode controlCode = 2;
+	optional string errorMsg = 3;
+	optional bool isAuthenticated = 4;
+	optional string fileName = 5;
+	optional bytes fileContents = 6;
+}

@@ -1,0 +1,17 @@
+package com.jetucker;
+
+option java_outer_classname = "Request";
+
+enum RequestControlCode
+{
+	REQUEST_AUTH = 1;
+	REQUEST_FILE = 2;
+	REQUEST_FINISH = 3;
+}
+
+message ControlRequest
+{
+	required int32 userId = 1;
+	required RequestControlCode controlCode = 2;
+	optional string fileName = 3;
+}
