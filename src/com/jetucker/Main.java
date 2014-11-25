@@ -2,9 +2,7 @@ package com.jetucker;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 
 public class Main
 {
@@ -16,7 +14,8 @@ public class Main
         boolean hasId = false;
         int userId = -1;
 
-        while((input = br.readLine()) != null && !hasId)
+        System.out.println("Please enter a user ID:");
+        while(!hasId && (input = br.readLine()) != null)
         {
             try
             {
@@ -42,6 +41,7 @@ public class Main
     {
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 
+        System.out.println("Please enter the filename you wish to request:");
         String result;
         result = br.readLine();
 
@@ -97,7 +97,22 @@ public class Main
 
     public static void HandleFileResponse(Response.ControlResponse response)
     {
-
+        if(response.hasFileName() && response.hasFileContents())
+        {
+            try(FileOutputStream fileOutputStream = new FileOutputStream(response.getFileName()))
+            {
+                fileOutputStream.write(response.getFileContents().toByteArray());
+            }
+            catch (IOException ex)
+            {
+                System.out.println("Could not save received file!");
+                System.out.println(ex.getMessage());
+            }
+        }
+        else
+        {
+            System.out.println("File response does not contain filename or contents!");
+        }
     }
 
     public static void HandleResponse(byte[] response)
