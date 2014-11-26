@@ -11,7 +11,7 @@ enum ResponseControlCode
 
 message ControlResponse
 {
-	required int32 userId = 1;
+	required int64 userId = 1;
 	required ResponseControlCode controlCode = 2;
 	optional string errorMsg = 3;
 	optional bool isAuthenticated = 4;

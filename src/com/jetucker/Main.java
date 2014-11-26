@@ -6,7 +6,7 @@ import java.io.*;
 
 public class Main
 {
-    private static int GetUserId() throws IOException
+    private static long GetLongFromUser(String prompt) throws IOException
     {
         BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
 
@@ -14,7 +14,7 @@ public class Main
         boolean hasId = false;
         int userId = -1;
 
-        System.out.println("Please enter a user ID:");
+        System.out.println(prompt);
         while(!hasId && (input = br.readLine()) != null)
         {
             try
@@ -24,14 +24,14 @@ public class Main
             }
             catch (NumberFormatException ex)
             {
-                System.out.println("Please enter a valid integer ID!");
+                System.out.println("Please enter a valid integer!");
             }
         }
 
         return userId;
     }
 
-    private static boolean Authenticate(int userId)
+    private static boolean Authenticate(long userId)
     {
         // TODO::JT
         return true;
@@ -48,7 +48,7 @@ public class Main
         return result;
     }
 
-    private static byte[] BuildFileRequest(int userId, String filename)
+    private static byte[] BuildFileRequest(long userId, String filename)
     {
         Request.ControlRequest.Builder builder = Request.ControlRequest.newBuilder();
         builder.setUserId(userId);
@@ -173,7 +173,7 @@ public class Main
         return shouldContinue;
     }
 
-    private static void Run(int userId, long key) throws IOException
+    private static void Run(long userId, long key) throws IOException
     {
         Encryptor encryptor = new Encryptor();
         String fileName;
@@ -192,10 +192,14 @@ public class Main
     {
         try
         {
-            int userId = GetUserId();
+            File lib = new File("lib/libcom_jetucker_Encryptor.dll");
+            System.load(lib.getAbsolutePath());
+
+            long userId = GetLongFromUser("Please enter your ID:");
+            long key = GetLongFromUser("Please enter your Key:");
             if(Authenticate(userId))
             {
-                Run(userId, 0);
+                Run(userId, key);
             }
             else
             {

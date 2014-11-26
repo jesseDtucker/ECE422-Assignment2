@@ -59,3 +59,7 @@ $RECYCLE.BIN/
 
 .idea/
 out/
+
+*.exp
+*.obj
+*.dll

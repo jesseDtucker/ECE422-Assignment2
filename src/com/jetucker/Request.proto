@@ -11,7 +11,7 @@ enum RequestControlCode
 
 message ControlRequest
 {
-	required int32 userId = 1;
+	required int64 userId = 1;
 	required RequestControlCode controlCode = 2;
 	optional string fileName = 3;
 }
