@@ -186,7 +186,7 @@ public final class Client
         if(response.hasFileName() && response.hasFileContents())
         {
             File outFile = new File(s_folderRoot + response.getFileName());
-            outFile.mkdirs();
+            new File(outFile.getParent()).mkdirs();
             try(FileOutputStream fileOutputStream = new FileOutputStream(outFile))
             {
                 fileOutputStream.write(response.getFileContents().toByteArray());

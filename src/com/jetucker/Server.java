@@ -75,13 +75,16 @@ public final class Server
         {
             boolean isAuthSuccessful = false;
 
-            synchronized (s_authenticatedUsers)
+            if(s_userIdToKey.containsKey(request.getUserId()))
             {
-                long userId = request.getUserId();
-                if(!s_authenticatedUsers.containsKey(userId))
+                synchronized (s_authenticatedUsers)
                 {
-                    isAuthSuccessful = true;
-                    s_authenticatedUsers.put(userId, this);
+                    long userId = request.getUserId();
+                    if(!s_authenticatedUsers.containsKey(userId))
+                    {
+                        isAuthSuccessful = true;
+                        s_authenticatedUsers.put(userId, this);
+                    }
                 }
             }
 
@@ -300,6 +303,14 @@ public final class Server
             {
                 System.out.println("Error handling request : ");
                 System.out.println(ex.getMessage());
+            }
+
+            if(m_userId != null)
+            {
+                synchronized (s_authenticatedUsers)
+                {
+                    s_authenticatedUsers.remove(m_userId);
+                }
             }
         }
     } // RequestHandler
