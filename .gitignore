@@ -63,3 +63,4 @@ out/
 *.exp
 *.obj
 *.dll
+*.lib
