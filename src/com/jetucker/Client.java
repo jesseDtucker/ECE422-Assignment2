@@ -44,13 +44,29 @@ public final class Client
         Response.ControlResponse response = null;
         // encrypt message
         Encryptor encryptor = new Encryptor();
-        byte[] encryptedRequest = encryptor.Encrypt(request.toByteArray(), key);
+        byte[] unencryptedRequest = request.toByteArray();
+        byte[] encryptedRequest = encryptor.Encrypt(unencryptedRequest, key);
+
+        System.out.println("Sending request : ");
+        System.out.println(request.toString());
+        System.out.println("Request : ");
+        for(byte b : unencryptedRequest)
+        {
+            System.out.print(b + " ");
+        }
+        System.out.println("\nEncrypted Request : ");
+        for(byte b : encryptedRequest)
+        {
+            System.out.print(b + " ");
+        }
+        System.out.println();
 
         // send message
         try
         {
             outputStream.writeInt(encryptedRequest.length);
             outputStream.write(encryptedRequest);
+            outputStream.flush();
 
             // get response
             int msgSize = inputStream.readInt();
@@ -75,7 +91,7 @@ public final class Client
         }
         catch (IOException ex)
         {
-            System.out.println("Failed to authenticate : ");
+            System.out.println("Failed to send request to server : ");
             System.out.println(ex.getMessage());
         }
 
@@ -169,7 +185,9 @@ public final class Client
     {
         if(response.hasFileName() && response.hasFileContents())
         {
-            try(FileOutputStream fileOutputStream = new FileOutputStream(s_folderRoot + response.getFileName()))
+            File outFile = new File(s_folderRoot + response.getFileName());
+            outFile.mkdirs();
+            try(FileOutputStream fileOutputStream = new FileOutputStream(outFile))
             {
                 fileOutputStream.write(response.getFileContents().toByteArray());
             }
@@ -258,6 +276,9 @@ public final class Client
             {
                 s_folderRoot = args[0];
             }
+
+            File rootDir = new File(s_folderRoot);
+            s_folderRoot = rootDir.getAbsolutePath() + "/";
 
             String osName = System.getProperty("os.name");
             if(osName.toLowerCase().contains("windows"))

@@ -42,6 +42,8 @@ void decrypt (long *v, long *k)
 template<void (*Func)(long*,long*)>
 jbyteArray ModifyArray(JNIEnv* env, jobject self, jbyteArray arr, jlong key)
 {
+	return arr;
+
 	jboolean isCopy = false;
 	auto javaSize = env->GetArrayLength(arr);
 	auto javaBytes = env->GetByteArrayElements(arr,&isCopy);
