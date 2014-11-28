@@ -49,20 +49,6 @@ public final class Client
         byte[] unencryptedRequest = request.toByteArray();
         byte[] encryptedRequest = encryptor.Encrypt(unencryptedRequest, key);
 
-        System.out.println("Sending request : ");
-        System.out.println(request.toString());
-        System.out.println("Request : ");
-        for(byte b : unencryptedRequest)
-        {
-            System.out.print(b + " ");
-        }
-        System.out.println("\nEncrypted Request : ");
-        for(byte b : encryptedRequest)
-        {
-            System.out.print(b + " ");
-        }
-        System.out.println();
-
         // send message
         try
         {

@@ -264,9 +264,6 @@ public final class Server
                         if(!(request.hasUserId() && request.getUserId() == m_userId))
                         {
                             request = null;
-                        }
-                        else
-                        {
                             System.out.println("User Id does not match old userId!");
                             System.out.println("Old : " + m_userId + " New : " + request.getUserId());
                         }
