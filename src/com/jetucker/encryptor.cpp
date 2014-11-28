@@ -61,7 +61,6 @@ jbyteArray ModifyArray(JNIEnv* env, jobject self, jbyteArray arr, jbyteArray key
 	jbyte* keyBuffer = new jbyte[STEP_SIZE];
 	jbyte* resultBuffer = new jbyte[paddedSize];
 	memset(keyBuffer, 0, STEP_SIZE);
-	memset(resultBuffer, 0, paddedSize);
 
 	env->GetByteArrayRegion(arr, 0, arrSize, resultBuffer);
 	env->GetByteArrayRegion(key, 0, STEP_SIZE, keyBuffer);
