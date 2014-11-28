@@ -1,4 +1,5 @@
 #include <cstring>
+#include <string>
 
 #include "com_jetucker_Encryptor.h"
 
@@ -12,8 +13,8 @@ void encrypt (long *v, long *k)
 
 	while (n-- > 0){
 		sum += delta;
-		y += (z<<4) + k[0] ^ z + sum ^ (z>>5) + k[1];
-		z += (y<<4) + k[2] ^ y + sum ^ (y>>5) + k[3];
+		y += (z<<4) + (k[0] ^ z) + (sum ^ (z>>5)) + k[1];
+		z += (y<<4) + (k[2] ^ y) + (sum ^ (y>>5)) + k[3];
 	}
 
 	v[0] = y;
@@ -28,15 +29,15 @@ void decrypt (long *v, long *k)
 
 	sum = delta<<5;
 	while (n-- > 0){
-		z -= (y<<4) + k[2] ^ y + sum ^ (y>>5) + k[3];
-		y -= (z<<4) + k[0] ^ z + sum ^ (z>>5) + k[1];
+		z -= (y<<4) + (k[2] ^ y) + (sum ^ (y>>5)) + k[3];
+		y -= (z<<4) + (k[0] ^ z) + (sum ^ (z>>5)) + k[1];
 		sum -= delta;
 	}
 	v[0] = y;
 	v[1] = z;
 }
 
-void ThrowException(JNIEnv* env, char* msg)
+void ThrowException(JNIEnv* env, const char* msg)
 {
 	env->ThrowNew(env->FindClass("java/lang/Exception"), msg);
 }
@@ -47,7 +48,9 @@ jbyteArray ModifyArray(JNIEnv* env, jobject self, jbyteArray arr, jbyteArray key
 	auto keySize = env->GetArrayLength(key);
 	if(keySize != STEP_SIZE)
 	{
-		ThrowException(env, "Key was the wrong size! Must be a 16 byte key!");
+		std::string msg = "Key was the wrong size! Must be a " + std::to_string(STEP_SIZE) + " byte key!";
+		msg += " it was a " + std::to_string(keySize) + " byte key!";
+		ThrowException(env, msg.c_str());
 		return NULL;
 	}
 	auto arrSize = env->GetArrayLength(arr);
