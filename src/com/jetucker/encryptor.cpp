@@ -1,11 +1,8 @@
 #include <cstring>
-#include <iostream>
 
 #include "com_jetucker_Encryptor.h"
 
-const auto STEP_SIZE = 2 * sizeof(long);
-
-using namespace std;
+const auto STEP_SIZE = 4 * sizeof(long);
 
 void encrypt (long *v, long *k)
 {
@@ -39,53 +36,57 @@ void decrypt (long *v, long *k)
 	v[1] = z;
 }
 
-template<void (*Func)(long*,long*)>
-jbyteArray ModifyArray(JNIEnv* env, jobject self, jbyteArray arr, jlong key)
+void ThrowException(JNIEnv* env, char* msg)
 {
-	return arr;
+	env->ThrowNew(env->FindClass("java/lang/Exception"), msg);
+}
 
-	jboolean isCopy = false;
-	auto javaSize = env->GetArrayLength(arr);
-	auto javaBytes = env->GetByteArrayElements(arr,&isCopy);
-
-	auto bytes = reinterpret_cast<char*>(javaBytes);
-	auto size = javaSize;
-
-	// must pad bytes out to be a multiple of 2 * sizeof(long)
-	if(size % STEP_SIZE != 0)
+template<void (*Func)(long*,long*)>
+jbyteArray ModifyArray(JNIEnv* env, jobject self, jbyteArray arr, jbyteArray key)
+{
+	auto keySize = env->GetArrayLength(key);
+	if(keySize != STEP_SIZE)
 	{
-		auto paddedSize = size + STEP_SIZE - (size - 1) % STEP_SIZE - 1;
-		bytes = new char[paddedSize];
-		memset(bytes, 0, paddedSize);
-		memcpy(bytes, javaBytes, javaSize);
-		
-		
-		cout << "resizing to : " << paddedSize << " from : " << size << endl;
-		
-		size = paddedSize;
+		ThrowException(env, "Key was the wrong size! Must be a 16 byte key!");
+		return NULL;
 	}
-	
-	cout << "beginning modification ... " << size << endl;
+	auto arrSize = env->GetArrayLength(arr);
 
-	char* curr = bytes;
-	while(curr < bytes + size)
+	auto paddedSize = arrSize;
+	if(paddedSize % STEP_SIZE != 0)
 	{
-		Func(reinterpret_cast<long*>(curr), reinterpret_cast<long*>(&key));
+		paddedSize = arrSize + STEP_SIZE - (arrSize - 1) % STEP_SIZE - 1;
+	}
+
+	jbyte* keyBuffer = new jbyte[STEP_SIZE];
+	jbyte* resultBuffer = new jbyte[paddedSize];
+	memset(keyBuffer, 0, STEP_SIZE);
+	memset(resultBuffer, 0, paddedSize);
+
+	env->GetByteArrayRegion(arr, 0, arrSize, resultBuffer);
+	env->GetByteArrayRegion(key, 0, STEP_SIZE, keyBuffer);
+
+	auto curr = resultBuffer;
+
+	curr = resultBuffer;
+	while(curr < resultBuffer + paddedSize)
+	{
+		Func((long*)(curr), (long*)(keyBuffer));
 		curr += STEP_SIZE;
 	}
 
-	auto result = env->NewByteArray(size);
-	env->SetByteArrayRegion(result, 0, size, reinterpret_cast<jbyte*>(bytes));
+	auto result = env->NewByteArray(paddedSize);
+	env->SetByteArrayRegion(result, 0, paddedSize, resultBuffer);
 
 	return result;
 }
 
-JNIEXPORT jbyteArray JNICALL Java_com_jetucker_Encryptor_Encrypt(JNIEnv* env, jobject self, jbyteArray arr, jlong key)
+JNIEXPORT jbyteArray JNICALL Java_com_jetucker_Encryptor_Encrypt(JNIEnv* env, jobject self, jbyteArray arr, jbyteArray key)
 {
 	return ModifyArray<encrypt>(env, self, arr, key);
 }
 
-JNIEXPORT jbyteArray JNICALL Java_com_jetucker_Encryptor_Decrypt(JNIEnv* env, jobject self, jbyteArray arr, jlong key)
+JNIEXPORT jbyteArray JNICALL Java_com_jetucker_Encryptor_Decrypt(JNIEnv* env, jobject self, jbyteArray arr, jbyteArray key)
 {
 	return ModifyArray<decrypt>(env, self, arr, key);
 }

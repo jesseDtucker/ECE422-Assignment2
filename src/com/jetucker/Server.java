@@ -6,6 +6,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,23 +18,19 @@ public final class Server
     private static int s_portNumber = 16000;
     private static String s_folderRoot = "./";
 
-    private static HashMap<Long, Long> s_userIdToKey;
+    private static HashMap<Long, byte[]> s_userIdToKey = new HashMap<>();;
     private static HashMap<Long, RequestHandler> s_authenticatedUsers = new HashMap<>();
 
     static
     {
-        s_userIdToKey = new HashMap<>();
-        s_userIdToKey.put(1L, 1L);
-        s_userIdToKey.put(2L, 2L);
-        s_userIdToKey.put(3L, 3L);
-        s_userIdToKey.put(4L, 4L);
+        s_userIdToKey.put(1L, new byte[]{ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1});
     }
 
     private static final class RequestHandler implements Runnable
     {
 
         private Socket m_socket;
-        private Long m_key;
+        private byte[] m_key;
         private Long m_userId;
 
         RequestHandler(Socket soc)
@@ -202,17 +199,18 @@ public final class Server
             return response;
         }
 
-        private void SendResponse(Response.ControlResponse response, long key, DataOutputStream outStream) throws IOException
+        private void SendResponse(Response.ControlResponse response, byte[] key, DataOutputStream outStream) throws IOException
         {
             Encryptor encryptor = new Encryptor();
             byte[] responseBytes = response.toByteArray();
             byte[] encryptedResponse = encryptor.Encrypt(responseBytes, key);
             outStream.writeInt(encryptedResponse.length);
+            outStream.writeInt(responseBytes.length);
             outStream.write(encryptedResponse);
             outStream.flush();
         }
 
-        private Request.ControlRequest DecodeRequest(byte[] encryptedRequest)
+        private Request.ControlRequest DecodeRequest(byte[] encryptedRequest, int msgSize)
         {
             Request.ControlRequest request = null;
             Encryptor encryptor = new Encryptor();
@@ -220,15 +218,16 @@ public final class Server
 
             if(m_key == null)
             {
-                for(Map.Entry<Long, Long> entry : s_userIdToKey.entrySet())
+                for(Map.Entry<Long, byte[]> entry : s_userIdToKey.entrySet())
                 {
                     long userId = entry.getKey();
-                    long key = entry.getValue();
+                    byte[] key = entry.getValue();
 
                     decryptedRequest = encryptor.Decrypt(encryptedRequest, key);
+                    byte[] truncatedRequest = Arrays.copyOf(decryptedRequest, msgSize);
                     try
                     {
-                        request = Request.ControlRequest.parseFrom(decryptedRequest);
+                        request = Request.ControlRequest.parseFrom(truncatedRequest);
                         if(request.hasUserId() && request.getUserId() == userId)
                         {
                             m_userId = userId;
@@ -237,6 +236,7 @@ public final class Server
                         }
                         else
                         {
+                            System.out.println("UserId does not match what was provided in the msg!");
                             request = null;
                         }
                     }
@@ -259,15 +259,21 @@ public final class Server
                 {
                     try
                     {
-                        request = Request.ControlRequest.parseFrom(decryptedRequest);
+                        byte[] truncatedRequest = Arrays.copyOf(decryptedRequest, msgSize);
+                        request = Request.ControlRequest.parseFrom(truncatedRequest);
                         if(!(request.hasUserId() && request.getUserId() == m_userId))
                         {
                             request = null;
                         }
+                        else
+                        {
+                            System.out.println("User Id does not match old userId!");
+                            System.out.println("Old : " + m_userId + " New : " + request.getUserId());
+                        }
                     }
                     catch (InvalidProtocolBufferException ex)
                     {
-                        // do nothing
+                        System.out.println("Failed to parse request from client!");
                     }
                 }
             }
@@ -283,19 +289,26 @@ public final class Server
             {
                 while(!m_socket.isClosed())
                 {
+                    System.out.println("reading in request...");
+                    int totalSize = inStream.readInt();
                     int msgSize = inStream.readInt();
-                    byte[] encryptedRequest = new byte[msgSize];
+                    System.out.println("fetching message of size : " + totalSize + " / " + msgSize);
+                    byte[] encryptedRequest = new byte[totalSize];
                     inStream.readFully(encryptedRequest);
 
-                    Request.ControlRequest request = DecodeRequest(encryptedRequest);
+                    System.out.println("decoding request...");
+                    Request.ControlRequest request = DecodeRequest(encryptedRequest, msgSize);
                     if(request != null)
                     {
+                        System.out.println("Received request : ");
+                        System.out.println(request.toString());
                         Response.ControlResponse response = HandleRequest(request);
                         SendResponse(response, m_key, outStream);
                     }
                     else
                     {
-                        m_socket.close();
+                        System.out.println("Failed to decode client request, killing connection");
+                        break;
                     }
                 }
             }
@@ -303,6 +316,18 @@ public final class Server
             {
                 System.out.println("Error handling request : ");
                 System.out.println(ex.getMessage());
+            }
+
+            try
+            {
+                if(!m_socket.isClosed())
+                {
+                    m_socket.close();
+                }
+            }
+            catch (IOException ex)
+            {
+                System.out.println("Failed to close socket : " + ex.getMessage());
             }
 
             if(m_userId != null)

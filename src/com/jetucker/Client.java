@@ -4,6 +4,8 @@ import com.google.protobuf.InvalidProtocolBufferException;
 
 import java.io.*;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public final class Client
 {
@@ -37,7 +39,7 @@ public final class Client
     }
 
     private static Response.ControlResponse PlaceRequest(Request.ControlRequest request,
-                                                         long key,
+                                                         byte[] key,
                                                          DataOutputStream outputStream,
                                                          DataInputStream inputStream)
     {
@@ -65,19 +67,22 @@ public final class Client
         try
         {
             outputStream.writeInt(encryptedRequest.length);
+            outputStream.writeInt(unencryptedRequest.length);
             outputStream.write(encryptedRequest);
             outputStream.flush();
 
             // get response
+            int totalSize = inputStream.readInt();
             int msgSize = inputStream.readInt();
-            byte[] encryptedResponse = new byte[msgSize];
+            byte[] encryptedResponse = new byte[totalSize];
             inputStream.readFully(encryptedResponse);
 
             // decrypt response
             byte[] rawResponse = encryptor.Decrypt(encryptedResponse, key);
+            byte[] truncatedResponse = Arrays.copyOf(rawResponse, msgSize);
             try
             {
-                response = Response.ControlResponse.parseFrom(rawResponse);
+                response = Response.ControlResponse.parseFrom(truncatedResponse);
                 if(response.getUserId() != request.getUserId())
                 {
                     System.out.println("Received response for wrong userID!");
@@ -98,7 +103,7 @@ public final class Client
         return response;
     }
 
-    private static boolean Authenticate(long userId, long key, DataOutputStream outStream, DataInputStream inStream)
+    private static boolean Authenticate(long userId, byte[] key, DataOutputStream outStream, DataInputStream inStream)
     {
         boolean isAuthed = false;
 
@@ -140,7 +145,7 @@ public final class Client
 
     private static Response.ControlResponse SendFileRequest(long userId,
                                                             String filename,
-                                                            long key,
+                                                            byte[] key,
                                                             DataOutputStream outStream,
                                                             DataInputStream inStream)
     {
@@ -253,7 +258,7 @@ public final class Client
         return shouldContinue;
     }
 
-    private static void Run(long userId, long key, DataOutputStream outStream, DataInputStream inStream) throws IOException
+    private static void Run(long userId, byte[] key, DataOutputStream outStream, DataInputStream inStream, Socket socket) throws IOException
     {
         String fileName;
 
@@ -265,7 +270,16 @@ public final class Client
             {
                 HandleResponse(fileResponse);
             }
-        }while(QueryContinue());
+        }while(!socket.isClosed() && QueryContinue());
+
+        if(socket.isClosed())
+        {
+            System.out.println("Disconnected from server");
+        }
+        else
+        {
+            socket.close();
+        }
     }
 
     public static void main(String[] args)
@@ -293,7 +307,13 @@ public final class Client
             }
 
             long userId = GetLongFromUser("Please enter your ID:");
-            long key = GetLongFromUser("Please enter your Key:");
+            long key1 = GetLongFromUser("Please enter the first half of your Key:");
+            long key2 = GetLongFromUser("Please enter the second half of your Key:");
+
+            ByteBuffer buffer = ByteBuffer.allocate(2 * Long.SIZE / 8);
+            buffer.putLong(key1);
+            buffer.putLong(key2);
+            byte[] key = buffer.array();
 
             try(    Socket socket = new Socket(s_serverAddress,s_serverPort);
                     DataOutputStream outStream = new DataOutputStream(socket.getOutputStream());
@@ -301,7 +321,7 @@ public final class Client
             {
                 if(Authenticate(userId, key, outStream, inStream))
                 {
-                    Run(userId, key, outStream, inStream);
+                    Run(userId, key, outStream, inStream, socket);
                 }
                 else
                 {

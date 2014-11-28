@@ -10,18 +10,18 @@ extern "C" {
 /*
  * Class:     com_jetucker_Encryptor
  * Method:    Encrypt
- * Signature: ([BJ)[B
+ * Signature: ([B[B)[B
  */
 JNIEXPORT jbyteArray JNICALL Java_com_jetucker_Encryptor_Encrypt
-  (JNIEnv *, jobject, jbyteArray, jlong);
+  (JNIEnv *, jobject, jbyteArray, jbyteArray);
 
 /*
  * Class:     com_jetucker_Encryptor
  * Method:    Decrypt
- * Signature: ([BJ)[B
+ * Signature: ([B[B)[B
  */
 JNIEXPORT jbyteArray JNICALL Java_com_jetucker_Encryptor_Decrypt
-  (JNIEnv *, jobject, jbyteArray, jlong);
+  (JNIEnv *, jobject, jbyteArray, jbyteArray);
 
 #ifdef __cplusplus
 }

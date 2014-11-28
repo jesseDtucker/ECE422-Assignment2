@@ -64,3 +64,5 @@ out/
 *.obj
 *.dll
 *.lib
+server/*
+client/*
