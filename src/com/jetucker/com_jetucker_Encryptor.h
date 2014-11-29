@@ -9,6 +9,14 @@ extern "C" {
 #endif
 /*
  * Class:     com_jetucker_Encryptor
+ * Method:    GetKeySize
+ * Signature: ()I
+ */
+JNIEXPORT jint JNICALL Java_com_jetucker_Encryptor_GetKeySize
+  (JNIEnv *, jclass);
+
+/*
+ * Class:     com_jetucker_Encryptor
  * Method:    Encrypt
  * Signature: ([B[B)[B
  */

@@ -1,41 +1,26 @@
 package com.jetucker;
 
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.json.exceptions.JSONParsingException;
+import com.json.parsers.JSONParser;
+import com.json.parsers.JsonParserFactory;
 
 import java.io.*;
 import java.net.Socket;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Map;
 
 public final class Client
 {
-    private static String s_folderRoot = "./";
-    private static String s_serverAddress = "127.0.0.1";
-    private static int s_serverPort = 16000;
+    static String s_folderRoot = "./";
 
-    private static long GetLongFromUser(String prompt) throws IOException
+    private static class Config
     {
-        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-
-        String input;
-        boolean hasId = false;
-        int userId = -1;
-
-        System.out.println(prompt);
-        while(!hasId && (input = br.readLine()) != null)
-        {
-            try
-            {
-                userId = Integer.parseInt(input);
-                hasId = true;
-            }
-            catch (NumberFormatException ex)
-            {
-                System.out.println("Please enter a valid integer!");
-            }
-        }
-
-        return userId;
+        String folderRoot = s_folderRoot;
+        String serverAddress = "127.0.0.1";
+        int serverPort = 16000;
+        int userId = 0;
+        byte[] key = null;
     }
 
     private static Response.ControlResponse PlaceRequest(Request.ControlRequest request,
@@ -244,14 +229,14 @@ public final class Client
         return shouldContinue;
     }
 
-    private static void Run(long userId, byte[] key, DataOutputStream outStream, DataInputStream inStream, Socket socket) throws IOException
+    private static void Run(Config config, DataOutputStream outStream, DataInputStream inStream, Socket socket) throws IOException
     {
         String fileName;
 
         do
         {
             fileName = GetFileNameFromUser();
-            Response.ControlResponse fileResponse = SendFileRequest(userId, fileName, key, outStream, inStream);
+            Response.ControlResponse fileResponse = SendFileRequest(config.userId, fileName, config.key, outStream, inStream);
             if(fileResponse != null)
             {
                 HandleResponse(fileResponse);
@@ -268,46 +253,135 @@ public final class Client
         }
     }
 
-    public static void main(String[] args)
+    private static Config LoadConfig(String configFileName) throws FileNotFoundException
     {
+        Config config = new Config();
+
+        File configFile = new File(configFileName);
+        FileInputStream fileInputStream = new FileInputStream(configFile);
+
+        JsonParserFactory factory=JsonParserFactory.getInstance();
+        JSONParser jsonParser = factory.newJsonParser();
+
+        Map parsedJson = null;
+
         try
         {
+            parsedJson = jsonParser.parseJson(fileInputStream, "UTF-8");
+        }
+        catch(JSONParsingException ex)
+        {
+            System.out.println("Failed to parse json config file!");
+            System.out.println(ex.getMessage());
+            return null;
+        }
+
+        // folder (optional)
+        if(parsedJson.containsKey("folder"))
+        {
+            config.folderRoot = (String)parsedJson.get("folder");
+        }
+
+        // ipAddr (optional
+        if(parsedJson.containsKey("ipAddr"))
+        {
+            config.serverAddress = (String)parsedJson.get("ipAddr");
+        }
+
+        // port (optional)
+        if(parsedJson.containsKey("port"))
+        {
+            try
+            {
+                config.serverPort = Integer.parseInt((String)parsedJson.get("port"));
+            }
+            catch(NumberFormatException ex)
+            {
+                System.out.println("Failed to parse port, please make sure it is an int!");
+                return null;
+            }
+        }
+
+        // id (required)
+        if(parsedJson.containsKey("id"))
+        {
+            try
+            {
+                config.userId = Integer.parseInt((String)parsedJson.get("id"));
+            }
+            catch(NumberFormatException ex)
+            {
+                System.out.println("Could not parse id, please ensure it is an integer!");
+                return null;
+            }
+        }
+        else
+        {
+            System.out.println("config file must contain an id!");
+            return null;
+        }
+
+        // key (required)
+        if(parsedJson.containsKey("key"))
+        {
+            config.key = ((String)parsedJson.get("key")).getBytes();
+            if(config.key.length != Encryptor.GetKeySize())
+            {
+                System.out.println("Key is the wrong size!");
+                System.out.println("Expected " + Encryptor.GetKeySize() + " bytes. Got " + config.key.length + " bytes.");
+                return null;
+            }
+        }
+        else
+        {
+            System.out.println("config file must contain a key!");
+            return null;
+        }
+
+        return config;
+    }
+
+    public static void main(String[] args)
+    {
+        String osName = System.getProperty("os.name");
+        if(osName.toLowerCase().contains("windows"))
+        {
+            File lib = new File("lib/libcom_jetucker_Encryptor.dll");
+            System.load(lib.getAbsolutePath());
+        }
+        else
+        {
+            File lib = new File("lib/libcom_jetucker_Encryptor.so");
+            System.load(lib.getAbsolutePath());
+        }
+
+        try
+        {
+            String configFile = "client.json";
             if(args.length > 0)
             {
-                s_folderRoot = args[0];
+                configFile = args[0];
             }
 
-            File rootDir = new File(s_folderRoot);
-            s_folderRoot = rootDir.getAbsolutePath() + "/";
+            Config config = LoadConfig(configFile);
 
-            String osName = System.getProperty("os.name");
-            if(osName.toLowerCase().contains("windows"))
+            if(config == null)
             {
-                File lib = new File("lib/libcom_jetucker_Encryptor.dll");
-                System.load(lib.getAbsolutePath());
-            }
-            else
-            {
-                File lib = new File("lib/libcom_jetucker_Encryptor.so");
-                System.load(lib.getAbsolutePath());
+                System.out.println("Could not parse config file, please check the contents!");
+                return;
             }
 
-            long userId = GetLongFromUser("Please enter your ID:");
-            long key1 = GetLongFromUser("Please enter the first half of your Key:");
-            long key2 = GetLongFromUser("Please enter the second half of your Key:");
+            s_folderRoot = config.folderRoot;
+            File rootDir = new File(config.folderRoot);
+            config.folderRoot = rootDir.getAbsolutePath() + "/";
 
-            ByteBuffer buffer = ByteBuffer.allocate(2 * Long.SIZE / 8);
-            buffer.putLong(key1);
-            buffer.putLong(key2);
-            byte[] key = buffer.array();
-
-            try(    Socket socket = new Socket(s_serverAddress,s_serverPort);
+            try(    Socket socket = new Socket(config.serverAddress,config.serverPort);
                     DataOutputStream outStream = new DataOutputStream(socket.getOutputStream());
                     DataInputStream inStream = new DataInputStream(socket.getInputStream()))
             {
-                if(Authenticate(userId, key, outStream, inStream))
+                if(Authenticate(config.userId, config.key, outStream, inStream))
                 {
-                    Run(userId, key, outStream, inStream, socket);
+                    Run(config, outStream, inStream, socket);
                 }
                 else
                 {

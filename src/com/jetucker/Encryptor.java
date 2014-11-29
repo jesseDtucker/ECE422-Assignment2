@@ -5,6 +5,7 @@ package com.jetucker;
  */
 public class Encryptor
 {
+    public static native int GetKeySize();
     public native byte[] Encrypt(byte[] data, byte[] key);
     public native byte[] Decrypt(byte[] data, byte[] key);
 }

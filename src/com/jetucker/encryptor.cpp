@@ -48,9 +48,7 @@ jbyteArray ModifyArray(JNIEnv* env, jobject self, jbyteArray arr, jbyteArray key
 	auto keySize = env->GetArrayLength(key);
 	if(keySize != STEP_SIZE)
 	{
-		std::string msg = "Key was the wrong size! Must be a " + std::to_string(STEP_SIZE) + " byte key!";
-		msg += " it was a " + std::to_string(keySize) + " byte key!";
-		ThrowException(env, msg.c_str());
+		ThrowException(env, "Key was the wrong size!");
 		return NULL;
 	}
 	auto arrSize = env->GetArrayLength(arr);
@@ -91,4 +89,9 @@ JNIEXPORT jbyteArray JNICALL Java_com_jetucker_Encryptor_Encrypt(JNIEnv* env, jo
 JNIEXPORT jbyteArray JNICALL Java_com_jetucker_Encryptor_Decrypt(JNIEnv* env, jobject self, jbyteArray arr, jbyteArray key)
 {
 	return ModifyArray<decrypt>(env, self, arr, key);
+}
+
+JNIEXPORT jint JNICALL Java_com_jetucker_Encryptor_GetKeySize(JNIEnv *, jclass)
+{
+	return STEP_SIZE;
 }

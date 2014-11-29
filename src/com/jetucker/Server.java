@@ -223,6 +223,12 @@ public final class Server
                     long userId = entry.getKey();
                     byte[] key = entry.getValue();
 
+                    if(key.length != Encryptor.GetKeySize())
+                    {
+                        System.out.println("Key is the wrong size! Received a key of length " + key.length + " for user " + userId + ". Require key to be " + Encryptor.GetKeySize() + " bytes.");
+                        break;
+                    }
+
                     decryptedRequest = encryptor.Decrypt(encryptedRequest, key);
                     byte[] truncatedRequest = Arrays.copyOf(decryptedRequest, msgSize);
                     try
