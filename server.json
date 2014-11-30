@@ -1,9 +1,18 @@
 {
+	"folder":"server/",
 	"clients":
 	[
 		{
 			"id":"1",
 			"key":"abcdefghijklmnop"
+		},
+		{
+			"id":"7",
+			"key":"qwertyuiopasdfgh"
+		},
+		{
+			"id":"99",
+			"key":"mnbvcxzlkjhgfdsa"
 		}
 	]
 }

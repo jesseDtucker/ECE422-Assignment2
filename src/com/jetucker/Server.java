@@ -2,17 +2,18 @@ package com.jetucker;
 
 import com.google.protobuf.ByteString;
 import com.google.protobuf.InvalidProtocolBufferException;
+import com.json.exceptions.JSONParsingException;
+import com.json.parsers.JSONParser;
+import com.json.parsers.JsonParserFactory;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Created by Jesse on 2014-11-25.
- */
 public final class Server
 {
     private static int s_portNumber = 16000;
@@ -269,9 +270,9 @@ public final class Server
                         request = Request.ControlRequest.parseFrom(truncatedRequest);
                         if(!(request.hasUserId() && request.getUserId() == m_userId))
                         {
-                            request = null;
                             System.out.println("User Id does not match old userId!");
                             System.out.println("Old : " + m_userId + " New : " + request.getUserId());
+                            request = null;
                         }
                     }
                     catch (InvalidProtocolBufferException ex)
@@ -361,13 +362,89 @@ public final class Server
         }
     }
 
-    public static void main(String[] args)
+    private static void LoadConfig(String fileName) throws FileNotFoundException
     {
-        if(args.length > 0)
+        System.out.println("Loading config...");
+
+        File configFile = new File(fileName);
+        FileInputStream fileInputStream = new FileInputStream(configFile);
+
+        JsonParserFactory factory=JsonParserFactory.getInstance();
+        JSONParser jsonParser = factory.newJsonParser();
+
+        Map parsedJson;
+
+        try
         {
-            s_folderRoot = args[0];
+            parsedJson = jsonParser.parseJson(fileInputStream, "UTF-8");
+        }
+        catch(JSONParsingException ex)
+        {
+            System.out.println("Failed to parse json config file!");
+            System.out.println(ex.getMessage());
+
+            throw new RuntimeException("Failed to load config file :" + ex.getMessage());
         }
 
+        if(parsedJson.containsKey("folder"))
+        {
+            s_folderRoot = (String)parsedJson.get("folder");
+        }
+
+        if(parsedJson.containsKey("clients"))
+        {
+            ArrayList clients = (ArrayList)parsedJson.get("clients");
+            for(Object clientObj : clients)
+            {
+                Long id = null;
+                byte[] key = null;
+
+                Map client = (Map)clientObj;
+                if(client.containsKey("id"))
+                {
+                    try
+                    {
+                        id = Long.parseLong((String) client.get("id"));
+                    }
+                    catch(NumberFormatException ex)
+                    {
+                        System.out.println("Failed to parse client id from config file! Ensure it is an integer!");
+                    }
+                }
+                else
+                {
+                    System.out.println("All clients must contain an ID!");
+                }
+
+                if(client.containsKey("key"))
+                {
+                    key = ((String)client.get("key")).getBytes();
+                    if(key.length != Encryptor.GetKeySize())
+                    {
+                        String IDstr = id != null ? id.toString() : "UNKNOWN ID";
+                        System.out.println("Cannot use key for ID :" + IDstr + ". It is " + key.length + " bytes long but should be " + Encryptor.GetKeySize() + " bytes long!");
+                        key = null;
+                    }
+                }
+                else
+                {
+                    System.out.println("All clients must contain a key!");
+                }
+
+                if(id != null && key != null)
+                {
+                    s_userIdToKey.put(id, key);
+                }
+            }
+        }
+        else
+        {
+            throw new RuntimeException("Failed to load config file : It does not contain a clients list!");
+        }
+    }
+
+    public static void main(String[] args)
+    {
         String osName = System.getProperty("os.name");
         if(osName.toLowerCase().contains("windows"))
         {
@@ -379,6 +456,26 @@ public final class Server
             File lib = new File("lib/libcom_jetucker_Encryptor.so");
             System.load(lib.getAbsolutePath());
         }
+
+        String configFileName = "server.json";
+
+        if(args.length > 0)
+        {
+            configFileName = args[0];
+        }
+
+        try
+        {
+            LoadConfig(configFileName);
+        }
+        catch (FileNotFoundException ex)
+        {
+            System.out.println("Failed to load config file : " + configFileName);
+            System.out.println(ex.getMessage());
+            return;
+        }
+
+        System.out.println("Starting server...");
 
         RunServer();
     }
