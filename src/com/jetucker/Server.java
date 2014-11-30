@@ -113,6 +113,17 @@ public final class Server
             return errorResponse;
         }
 
+        private static boolean IsInSubDirectory(File dir, File file)
+        {
+            if (file == null)
+                return false;
+
+            if (file.equals(dir))
+                return true;
+
+            return IsInSubDirectory(dir, file.getParentFile());
+        }
+
         private boolean CanAccessFile(File file) throws IOException
         {
             File configFile = new File(s_configFileName);
@@ -123,7 +134,9 @@ public final class Server
                 return false;
             }
 
-            return true;
+            File rootDir = new File(s_folderRoot).getCanonicalFile();
+
+            return IsInSubDirectory(rootDir, file);
         }
 
         private Response.ControlResponse HandleFileRequest(Request.ControlRequest request)
@@ -137,7 +150,7 @@ public final class Server
                 // good, the user can actually request a file
                 try
                 {
-                    File file = new File(s_folderRoot + request.getFileName());
+                    File file = new File(s_folderRoot + request.getFileName()).getCanonicalFile();
 
                     if(CanAccessFile(file))
                     {
