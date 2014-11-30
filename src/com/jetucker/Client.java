@@ -14,7 +14,7 @@ public final class Client
 {
     static String s_folderRoot = "./";
 
-    private static class Config
+    private static final class Config
     {
         String folderRoot = s_folderRoot;
         String serverAddress = "127.0.0.1";
@@ -162,10 +162,20 @@ public final class Client
         if(response.hasFileName() && response.hasFileContents())
         {
             File outFile = new File(s_folderRoot + response.getFileName());
-            new File(outFile.getParent()).mkdirs();
+            File outDir = new File(outFile.getParent());
+            if(!outDir.exists())
+            {
+                boolean mkdirs = outDir.mkdirs();
+                if(!mkdirs)
+                {
+                    System.out.println("Failed to create the directories to store the file : " + response.getFileName());
+                }
+            }
+
             try(FileOutputStream fileOutputStream = new FileOutputStream(outFile))
             {
                 fileOutputStream.write(response.getFileContents().toByteArray());
+                System.out.println("Saved file to : " + outFile.getAbsolutePath());
             }
             catch (IOException ex)
             {
@@ -263,7 +273,7 @@ public final class Client
         JsonParserFactory factory=JsonParserFactory.getInstance();
         JSONParser jsonParser = factory.newJsonParser();
 
-        Map parsedJson = null;
+        Map parsedJson;
 
         try
         {
