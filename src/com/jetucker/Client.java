@@ -290,6 +290,11 @@ public final class Client
         if(parsedJson.containsKey("folder"))
         {
             config.folderRoot = (String)parsedJson.get("folder");
+            char lastChar = config.folderRoot.charAt(config.folderRoot.length() - 1);
+            if(lastChar != File.separatorChar)
+            {
+                config.folderRoot += File.separator;
+            }
         }
 
         // ipAddr (optional
