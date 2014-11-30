@@ -18,6 +18,7 @@ public final class Server
 {
     private static int s_portNumber = 16000;
     private static String s_folderRoot = "./";
+    private static String s_configFileName = "server.json";
 
     private static HashMap<Long, byte[]> s_userIdToKey = new HashMap<>();;
     private static HashMap<Long, RequestHandler> s_authenticatedUsers = new HashMap<>();
@@ -112,6 +113,18 @@ public final class Server
             return errorResponse;
         }
 
+        private boolean CanAccessFile(File file) throws IOException
+        {
+            File configFile = new File(s_configFileName);
+            String filePath = file.getCanonicalPath();
+            String configPath = configFile.getCanonicalPath();
+            if(filePath.equals(configPath))
+            {
+                return false;
+            }
+
+            return true;
+        }
 
         private Response.ControlResponse HandleFileRequest(Request.ControlRequest request)
         {
@@ -125,16 +138,24 @@ public final class Server
                 try
                 {
                     File file = new File(s_folderRoot + request.getFileName());
-                    FileInputStream inStream = new FileInputStream(file);
-                    long fileLength = file.length();
-                    if(fileLength < Integer.MAX_VALUE)
+
+                    if(CanAccessFile(file))
                     {
-                        ByteString fileBytes = ByteString.readFrom(inStream);
-                        response = CreateFileResponse(request.getUserId(), request.getFileName(), fileBytes);
+                        FileInputStream inStream = new FileInputStream(file);
+                        long fileLength = file.length();
+                        if(fileLength < Integer.MAX_VALUE)
+                        {
+                            ByteString fileBytes = ByteString.readFrom(inStream);
+                            response = CreateFileResponse(request.getUserId(), request.getFileName(), fileBytes);
+                        }
+                        else
+                        {
+                            errorMsg = "Server does not allow for files that exceed " + Integer.MAX_VALUE + " bytes!";
+                        }
                     }
                     else
                     {
-                        errorMsg = "Server does not allow for files that exceed " + Integer.MAX_VALUE + " bytes!";
+                        errorMsg = "Illegal file access";
                     }
                 }
                 catch (FileNotFoundException ex)
@@ -457,20 +478,18 @@ public final class Server
             System.load(lib.getAbsolutePath());
         }
 
-        String configFileName = "server.json";
-
         if(args.length > 0)
         {
-            configFileName = args[0];
+            s_configFileName = args[0];
         }
 
         try
         {
-            LoadConfig(configFileName);
+            LoadConfig(s_configFileName);
         }
         catch (FileNotFoundException ex)
         {
-            System.out.println("Failed to load config file : " + configFileName);
+            System.out.println("Failed to load config file : " + s_configFileName);
             System.out.println(ex.getMessage());
             return;
         }
