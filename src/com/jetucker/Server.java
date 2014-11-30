@@ -284,7 +284,6 @@ public final class Server
                     catch(InvalidProtocolBufferException ex)
                     {
                         // just keep trying
-                        System.out.println("Failed to decode request from client!");
                     }
                 }
             }
