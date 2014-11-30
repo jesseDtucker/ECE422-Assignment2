@@ -1,4 +1,5 @@
 {
+	"port":"16000",
 	"folder":"server/",
 	"clients":
 	[

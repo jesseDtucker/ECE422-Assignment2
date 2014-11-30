@@ -419,6 +419,18 @@ public final class Server
             throw new RuntimeException("Failed to load config file :" + ex.getMessage());
         }
 
+        if(parsedJson.containsKey("port"))
+        {
+            try
+            {
+                s_portNumber = Integer.parseInt((String)parsedJson.get("port"));
+            }
+            catch(NumberFormatException ex)
+            {
+                System.out.println("Could not parse port number, using default port : " + s_portNumber);
+            }
+        }
+
         if(parsedJson.containsKey("folder"))
         {
             s_folderRoot = (String)parsedJson.get("folder");
